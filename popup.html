@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 350px;
+            padding: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .header h2 {
+            margin: 0 0 5px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .header p {
+            margin: 0;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .section {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .section h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .control-group {
+            margin-bottom: 12px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #333;
+            font-size: 12px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-select {
+            background: #0066cc;
+            color: white;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn-select:hover {
+            background: #0052a3;
+        }
+        
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-start:hover:not(:disabled) {
+            background: #218838;
+        }
+        
+        .btn-pause {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .btn-pause:hover:not(:disabled) {
+            background: #e0a800;
+        }
+        
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-stop:hover:not(:disabled) {
+            background: #c82333;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .current-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0066cc;
+            margin-bottom: 5px;
+        }
+        
+        .status-text {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .target-info {
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        
+        .target-info.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .target-info.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .target-info.info {
+            background: #cce7ff;
+            color: #004085;
+            border: 1px solid #80bdff;
+        }
+        
+        .selecting {
+            background: #fff3cd !important;
+            color: #856404 !important;
+            border: 1px solid #ffeaa7 !important;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+        
+        .checkbox-group label {
+            margin: 0;
+            font-size: 12px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #0066cc;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+        
+        .running .current-value {
+            color: #28a745;
+        }
+        
+        .instructions {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>🔢 Auto-Increment</h2>
+        <p>Automatically input incrementing values</p>
+    </div>
+    
+    <button id="selectTarget" class="btn-select">🎯 Select Input Field</button>
+    
+    <div id="targetInfo" class="target-info hidden"></div>
+    
+    <div class="section">
+        <h3>⚙️ Settings</h3>
+        
+        <div class="control-group">
+            <label for="startValue">Start Value:</label>
+            <input type="number" id="startValue" value="1" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label for="increment">Increment By:</label>
+            <input type="number" id="increment" value="1" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label for="interval">Interval (seconds):</label>
+            <input type="number" id="interval" value="1" step="0.1" min="0.1">
+        </div>
+        
+        <div class="control-group">
+            <div class="checkbox-group">
+                <input type="checkbox" id="autoSubmit" checked>
+                <label for="autoSubmit">Press Enter after input</label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="status" id="statusDisplay">
+        <div class="current-value" id="currentValue">1</div>
+        <div class="status-text" id="statusText">Ready to start</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+    
+    <div class="button-group">
+        <button id="startBtn" class="btn-start">▶️ Start</button>
+        <button id="pauseBtn" class="btn-pause" disabled>⏸️ Pause</button>
+        <button id="stopBtn" class="btn-stop" disabled>⏹️ Stop</button>
+    </div>
+    
+    <div class="instructions">
+        <strong>How to use:</strong><br>
+        1. Click "Select Input Field"<br>
+        2. Click on any input field on the page<br>
+        3. Configure settings and click "Start"<br>
+        <strong>Tip:</strong> Use ← → arrow keys on the page to manually step values
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>
