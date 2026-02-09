@@ -1,3 +1,5 @@
+const LOG_PREFIX = '[AutoIncrement]';
+
 class AutoIncrementPopup {
     constructor() {
         this.currentTab = null;
@@ -5,7 +7,7 @@ class AutoIncrementPopup {
         this.isRunning = false;
         this.isPaused = false;
         this.currentValue = 1;
-        
+
         this.initializeElements();
         this.bindEvents();
         this.loadState();
@@ -26,7 +28,7 @@ class AutoIncrementPopup {
             progressFill: document.getElementById('progressFill'),
             startBtn: document.getElementById('startBtn'),
             pauseBtn: document.getElementById('pauseBtn'),
-            stopBtn: document.getElementById('stopBtn')
+            stopBtn: document.getElementById('stopBtn'),
         };
     }
 
@@ -35,7 +37,7 @@ class AutoIncrementPopup {
         this.elements.startBtn.addEventListener('click', () => this.start());
         this.elements.pauseBtn.addEventListener('click', () => this.pause());
         this.elements.stopBtn.addEventListener('click', () => this.stop());
-        
+
         this.elements.startValue.addEventListener('input', () => {
             this.currentValue = parseInt(this.elements.startValue.value) || 1;
             this.updateCurrentValueDisplay();
@@ -43,21 +45,20 @@ class AutoIncrementPopup {
             this.syncSettingsToContent();
         });
 
-        // Save settings when changed and sync to content script
-        ['increment', 'interval'].forEach(id => {
+        ['increment', 'interval'].forEach((id) => {
             this.elements[id].addEventListener('input', () => {
                 this.saveState();
                 this.syncSettingsToContent();
             });
         });
+
         this.elements.autoSubmit.addEventListener('change', () => {
             this.saveState();
             this.syncSettingsToContent();
         });
 
-        // Listen for messages from content script
         chrome.runtime.onMessage.addListener((message) => {
-            switch(message.action) {
+            switch (message.action) {
                 case 'targetSelected':
                     this.handleTargetSelected(message.data);
                     break;
@@ -65,10 +66,6 @@ class AutoIncrementPopup {
                     this.handleStatusUpdate(message.data);
                     break;
                 case 'incrementComplete':
-                    this.currentValue = message.data.currentValue;
-                    this.updateCurrentValueDisplay();
-                    this.saveState();
-                    break;
                 case 'manualIncrement':
                     this.currentValue = message.data.currentValue;
                     this.updateCurrentValueDisplay();
@@ -78,25 +75,28 @@ class AutoIncrementPopup {
         });
     }
 
+    // ========================================================================
+    // Tab Management
+    // ========================================================================
+
     async getCurrentTab() {
         try {
             const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
             this.currentTab = tabs[0];
-            
-            // Check if we can access this tab
+
             if (this.currentTab && this.isRestrictedPage(this.currentTab.url)) {
-                this.showTargetInfo('❌ Cannot run on this page (restricted by Chrome)', 'error');
+                this.showTargetInfo('Cannot run on this page (restricted by Chrome)', 'error');
                 this.currentTab = null;
                 return;
             }
-            
+
             this.checkCurrentState();
         } catch (error) {
-            console.error('Error getting current tab:', error);
-            this.showTargetInfo('❌ Cannot access current tab', 'error');
+            console.error(`${LOG_PREFIX} Error getting current tab:`, error);
+            this.showTargetInfo('Cannot access current tab', 'error');
         }
     }
-    
+
     isRestrictedPage(url) {
         if (!url) return true;
         const restrictedPrefixes = [
@@ -105,86 +105,77 @@ class AutoIncrementPopup {
             'edge://',
             'about:',
             'view-source:',
-            'https://chrome.google.com/webstore'
+            'https://chrome.google.com/webstore',
         ];
-        return restrictedPrefixes.some(prefix => url.startsWith(prefix));
+        return restrictedPrefixes.some((prefix) => url.startsWith(prefix));
     }
 
     async checkCurrentState() {
         if (!this.currentTab) return;
-        
+
         try {
             const response = await chrome.tabs.sendMessage(this.currentTab.id, {
-                action: 'getStatus'
+                action: 'getStatus',
             });
-            
+
             if (response) {
                 this.isRunning = response.isRunning;
                 this.isPaused = response.isPaused;
                 this.currentValue = response.currentValue;
                 this.targetElement = response.hasTarget;
-                
+
                 if (response.hasTarget) {
-                    this.showTargetInfo('✅ Target selected and ready', 'success');
+                    this.showTargetInfo('Target selected and ready', 'success');
                 }
-                
+
                 this.updateUI();
             }
-        } catch (error) {
-            // Content script not ready or no target
-            console.log('Content script not ready or no active session');
+        } catch {
+            console.log(`${LOG_PREFIX} Content script not ready or no active session`);
         }
     }
 
+    // ========================================================================
+    // Target Selection
+    // ========================================================================
+
     async startTargetSelection() {
         if (!this.currentTab) {
-            this.showTargetInfo('❌ Cannot access current tab', 'error');
+            this.showTargetInfo('Cannot access current tab', 'error');
             return;
         }
 
-        this.elements.selectTarget.textContent = '🎯 Click on an input field...';
+        this.elements.selectTarget.textContent = 'Click on an input field...';
         this.elements.selectTarget.classList.add('selecting');
         this.showTargetInfo('Click on any input field on the page to select it', 'info');
 
         try {
-            // First, ensure content script is loaded
             await this.ensureContentScriptLoaded();
-            
-            // Now send the message
-            const response = await chrome.tabs.sendMessage(this.currentTab.id, {
-                action: 'startTargetSelection'
+            await chrome.tabs.sendMessage(this.currentTab.id, {
+                action: 'startTargetSelection',
             });
-            
-            console.log('Target selection started successfully', response);
+            console.log(`${LOG_PREFIX} Target selection started`);
         } catch (error) {
-            console.error('Error starting target selection:', error);
-            console.error('Error details:', {
-                message: error.message,
-                tabId: this.currentTab?.id,
-                tabUrl: this.currentTab?.url
-            });
-            this.showTargetInfo(`❌ Error: ${error.message}`, 'error');
+            console.error(`${LOG_PREFIX} Error starting target selection:`, error);
+            this.showTargetInfo(`Error: ${error.message}`, 'error');
             this.resetSelectButton();
         }
     }
-    
+
     async ensureContentScriptLoaded() {
         try {
-            // Try to ping the content script
             await chrome.tabs.sendMessage(this.currentTab.id, { action: 'ping' });
-        } catch (error) {
-            // Content script not loaded, inject it
-            console.log('Content script not loaded, injecting...');
+        } catch {
+            console.log(`${LOG_PREFIX} Content script not loaded, injecting...`);
             try {
                 await chrome.scripting.executeScript({
                     target: { tabId: this.currentTab.id },
-                    files: ['content.js']
+                    files: ['content.js'],
                 });
-                console.log('Content script injected successfully');
-                // Wait a bit for it to initialize
-                await new Promise(resolve => setTimeout(resolve, 100));
+                console.log(`${LOG_PREFIX} Content script injected`);
+                await new Promise((resolve) => setTimeout(resolve, 100));
             } catch (injectError) {
-                console.error('Failed to inject content script:', injectError);
+                console.error(`${LOG_PREFIX} Failed to inject content script:`, injectError);
                 throw new Error('Cannot inject script on this page. Try a different website.');
             }
         }
@@ -193,21 +184,24 @@ class AutoIncrementPopup {
     handleTargetSelected(data) {
         this.targetElement = data.success;
         this.resetSelectButton();
-        
+
         if (data.success) {
-            this.showTargetInfo(`✅ Target selected: ${data.description}`, 'success');
-            // Sync current settings to content script so arrow keys work immediately
+            this.showTargetInfo(`Target selected: ${data.description}`, 'success');
             this.syncSettingsToContent();
         } else {
-            this.showTargetInfo(`❌ ${data.error}`, 'error');
+            this.showTargetInfo(data.error, 'error');
         }
-        
+
         this.saveState();
     }
 
+    // ========================================================================
+    // Settings Sync
+    // ========================================================================
+
     async syncSettingsToContent() {
         if (!this.currentTab) return;
-        
+
         try {
             await chrome.tabs.sendMessage(this.currentTab.id, {
                 action: 'syncSettings',
@@ -215,30 +209,33 @@ class AutoIncrementPopup {
                     startValue: parseInt(this.elements.startValue.value) || 1,
                     increment: parseInt(this.elements.increment.value) || 1,
                     interval: parseFloat(this.elements.interval.value) || 1,
-                    autoSubmit: this.elements.autoSubmit.checked
-                }
+                    autoSubmit: this.elements.autoSubmit.checked,
+                },
             });
-        } catch (error) {
-            // Content script may not be loaded yet, that's OK
-            console.log('Could not sync settings to content script:', error.message);
+        } catch {
+            console.log(`${LOG_PREFIX} Could not sync settings to content script`);
         }
     }
+
+    // ========================================================================
+    // Status Updates
+    // ========================================================================
 
     handleStatusUpdate(data) {
         this.isRunning = data.isRunning;
         this.isPaused = data.isPaused;
-        
+
         if (data.error) {
-            this.showTargetInfo(`❌ ${data.error}`, 'error');
+            this.showTargetInfo(data.error, 'error');
             this.isRunning = false;
             this.isPaused = false;
         }
-        
+
         this.updateUI();
     }
 
     resetSelectButton() {
-        this.elements.selectTarget.textContent = '🎯 Select Input Field';
+        this.elements.selectTarget.textContent = 'Select Input Field';
         this.elements.selectTarget.classList.remove('selecting');
     }
 
@@ -246,8 +243,7 @@ class AutoIncrementPopup {
         this.elements.targetInfo.textContent = message;
         this.elements.targetInfo.className = `target-info ${type}`;
         this.elements.targetInfo.classList.remove('hidden');
-        
-        // Auto-hide info messages after 5 seconds
+
         if (type === 'info') {
             setTimeout(() => {
                 this.elements.targetInfo.classList.add('hidden');
@@ -255,14 +251,17 @@ class AutoIncrementPopup {
         }
     }
 
+    // ========================================================================
+    // Increment Controls
+    // ========================================================================
+
     async start() {
         if (!this.targetElement) {
-            this.showTargetInfo('❌ Please select a target input field first', 'error');
+            this.showTargetInfo('Please select a target input field first', 'error');
             return;
         }
-
         if (!this.currentTab) {
-            this.showTargetInfo('❌ Cannot access current tab', 'error');
+            this.showTargetInfo('Cannot access current tab', 'error');
             return;
         }
 
@@ -270,33 +269,27 @@ class AutoIncrementPopup {
             startValue: parseInt(this.elements.startValue.value) || 1,
             increment: parseInt(this.elements.increment.value) || 1,
             interval: parseFloat(this.elements.interval.value) || 1,
-            autoSubmit: this.elements.autoSubmit.checked
+            autoSubmit: this.elements.autoSubmit.checked,
         };
 
         try {
             await this.ensureContentScriptLoaded();
-            
+
             if (this.isPaused) {
-                // Resume
-                await chrome.tabs.sendMessage(this.currentTab.id, {
-                    action: 'resume'
-                });
-                this.isRunning = true;
-                this.isPaused = false;
-                this.updateUI();
+                await chrome.tabs.sendMessage(this.currentTab.id, { action: 'resume' });
             } else {
-                // Start new
                 this.currentValue = settings.startValue;
                 await chrome.tabs.sendMessage(this.currentTab.id, {
                     action: 'start',
-                    settings: settings
+                    settings,
                 });
-                this.isRunning = true;
-                this.isPaused = false;
-                this.updateUI();
             }
+
+            this.isRunning = true;
+            this.isPaused = false;
+            this.updateUI();
         } catch (error) {
-            this.showTargetInfo('❌ Error: ' + error.message, 'error');
+            this.showTargetInfo(`Error: ${error.message}`, 'error');
         }
     }
 
@@ -304,14 +297,12 @@ class AutoIncrementPopup {
         if (!this.currentTab) return;
 
         try {
-            await chrome.tabs.sendMessage(this.currentTab.id, {
-                action: 'pause'
-            });
+            await chrome.tabs.sendMessage(this.currentTab.id, { action: 'pause' });
             this.isRunning = false;
             this.isPaused = true;
             this.updateUI();
         } catch (error) {
-            this.showTargetInfo('❌ Error pausing: ' + error.message, 'error');
+            this.showTargetInfo(`Error pausing: ${error.message}`, 'error');
         }
     }
 
@@ -319,37 +310,36 @@ class AutoIncrementPopup {
         if (!this.currentTab) return;
 
         try {
-            await chrome.tabs.sendMessage(this.currentTab.id, {
-                action: 'stop'
-            });
+            await chrome.tabs.sendMessage(this.currentTab.id, { action: 'stop' });
             this.isRunning = false;
             this.isPaused = false;
             this.currentValue = parseInt(this.elements.startValue.value) || 1;
             this.updateUI();
         } catch (error) {
-            this.showTargetInfo('❌ Error stopping: ' + error.message, 'error');
+            this.showTargetInfo(`Error stopping: ${error.message}`, 'error');
         }
     }
+
+    // ========================================================================
+    // UI Updates
+    // ========================================================================
 
     updateCurrentValueDisplay() {
         this.elements.currentValue.textContent = this.currentValue;
     }
 
     updateUI() {
-        // Update button states
         this.elements.startBtn.disabled = this.isRunning;
         this.elements.pauseBtn.disabled = !this.isRunning;
         this.elements.stopBtn.disabled = !this.isRunning && !this.isPaused;
-        
-        // Update start button text
+
         if (this.isPaused) {
-            this.elements.startBtn.textContent = '▶️ Resume';
+            this.elements.startBtn.textContent = 'Resume';
             this.elements.startBtn.disabled = false;
         } else {
-            this.elements.startBtn.textContent = '▶️ Start';
+            this.elements.startBtn.textContent = 'Start';
         }
-        
-        // Update status text and styling
+
         if (this.isRunning) {
             this.elements.statusText.textContent = `Running (${this.elements.interval.value}s interval)`;
             this.elements.statusDisplay.classList.add('running');
@@ -360,14 +350,17 @@ class AutoIncrementPopup {
             this.elements.statusText.textContent = this.targetElement ? 'Ready to start' : 'Select target first';
             this.elements.statusDisplay.classList.remove('running');
         }
-        
-        // Disable controls while running
+
         this.elements.startValue.disabled = this.isRunning;
         this.elements.increment.disabled = this.isRunning;
         this.elements.interval.disabled = this.isRunning;
-        
+
         this.updateCurrentValueDisplay();
     }
+
+    // ========================================================================
+    // State Persistence
+    // ========================================================================
 
     saveState() {
         const state = {
@@ -376,29 +369,27 @@ class AutoIncrementPopup {
             interval: this.elements.interval.value,
             autoSubmit: this.elements.autoSubmit.checked,
             currentValue: this.currentValue,
-            hasTarget: !!this.targetElement
+            hasTarget: !!this.targetElement,
         };
-        
         chrome.storage.local.set({ autoIncrementState: state });
     }
 
     async loadState() {
         try {
             const result = await chrome.storage.local.get('autoIncrementState');
-            if (result.autoIncrementState) {
-                const state = result.autoIncrementState;
-                
-                this.elements.startValue.value = state.startValue || 1;
-                this.elements.increment.value = state.increment || 1;
-                this.elements.interval.value = state.interval || 1;
-                this.elements.autoSubmit.checked = state.autoSubmit !== false;
-                this.currentValue = state.currentValue || 1;
-                this.targetElement = state.hasTarget;
-                
-                this.updateCurrentValueDisplay();
-            }
+            const state = result.autoIncrementState;
+            if (!state) return;
+
+            this.elements.startValue.value = state.startValue || 1;
+            this.elements.increment.value = state.increment || 1;
+            this.elements.interval.value = state.interval || 1;
+            this.elements.autoSubmit.checked = state.autoSubmit !== false;
+            this.currentValue = state.currentValue || 1;
+            this.targetElement = state.hasTarget;
+
+            this.updateCurrentValueDisplay();
         } catch (error) {
-            console.error('Error loading state:', error);
+            console.error(`${LOG_PREFIX} Error loading state:`, error);
         }
     }
 }
