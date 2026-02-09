@@ -1,112 +1,37 @@
-# Firefox Auto-Increment Extension - Installation Guide
+# Auto-Increment Chrome Extension
 
-## 📦 What You Need
+A Chrome extension that automatically inputs incrementing values into web form fields, with manual arrow-key stepping, focus mode for eBay Seller Hub, and full session persistence.
 
-I've created a complete Firefox extension with these files:
-- `manifest.json` - Extension configuration
-- `popup.html` - The main interface (popup when you click the extension icon)
-- `popup.js` - Popup functionality 
-- `content.js` - Script that runs on web pages
-- `background.js` - Background processes
-- Icon files (you'll need to create simple icons)
+## Install
 
-## 🚀 Installation Steps
+1. Download this repository as a ZIP (green **Code** button > **Download ZIP**) or clone it
+2. Unzip the folder if needed
+3. Open Chrome and go to `chrome://extensions`
+4. Enable **Developer mode** (toggle in the top-right corner)
+5. Click **Load unpacked**
+6. Select the `auto-increment-extension` folder
+7. The extension icon will appear in your toolbar
 
-### Step 1: Create the Extension Folder
-1. Create a new folder on your computer called `auto-increment-extension`
-2. Save each file I provided into this folder with the correct filename
+## How to Use
 
-### Step 2: Create Simple Icons
-Create three simple icon files (or use any 16x16, 48x48, and 128x128 PNG images):
-- `icon16.png` (16x16 pixels)
-- `icon48.png` (48x48 pixels) 
-- `icon128.png` (128x128 pixels)
+1. Click the extension icon in your toolbar to open the popup
+2. Click **Select Input Field**, then click on any text input on the page (e.g. eBay's search box)
+3. Configure your settings (start value, increment, interval)
+4. Use **arrow keys** to manually step through values, or click **Start** for automatic incrementing
+5. Toggle **Focus Mode** on the floating tracker to simplify the eBay listings table
 
-*You can create simple colored squares in any image editor, or download free icons from sites like IconFinder.*
+## Features
 
-### Step 3: Load the Extension in Firefox
+- **Arrow key stepping** -- press Left/Right arrow keys to manually increment or decrement the selected field
+- **Auto-increment** -- automatically input values at a configurable interval with Start/Pause/Stop controls
+- **Floating tracker badge** -- draggable, minimizable overlay that shows the current value, status, and step size
+- **Focus mode** -- hides unnecessary columns on eBay Seller Hub, enlarges listing images to 250px, and keeps only SKU, quantity, item, and action columns visible
+- **Session persistence** -- current value, settings, focus mode state, and selected field are saved and automatically restored when you return to the page
+- **Auto-reselect target** -- the extension remembers which input field you selected using a CSS selector fingerprint and re-selects it on page load
+- **Auto-submit** -- optionally presses Enter after each value input to trigger a search
 
-#### Method A: Temporary Installation (for testing)
-1. Open Firefox
-2. Type `about:debugging` in the address bar
-3. Click "This Firefox" on the left
-4. Click "Load Temporary Add-on..."
-5. Navigate to your extension folder and select `manifest.json`
-6. The extension will appear in your toolbar!
+## Tips
 
-#### Method B: Developer Mode (more permanent)
-1. Open Firefox
-2. Type `about:config` in address bar (accept warnings)
-3. Search for `xpinstall.signatures.required`
-4. Double-click to set it to `false`
-5. Then zip your extension folder
-6. Go to `about:addons`
-7. Click the gear icon → "Install Add-on From File"
-8. Select your zip file
-
-## 🎯 How to Use
-
-1. **Click the extension icon** in your Firefox toolbar
-2. **Click "Select Input Field"** 
-3. **Click on any input field** on the webpage (like eBay's search box)
-4. **Set your preferences**:
-   - Start Value (e.g., 1)  
-   - Increment By (e.g., 1)
-   - Interval (e.g., 1 second)
-   - Enable "Press Enter after input" for auto-submit
-5. **Click "Start"** and watch it work!
-
-## ✨ Features
-
-- 🎯 **Easy Target Selection**: Click to select any input field
-- ⚙️ **Customizable Settings**: Start value, increment, timing
-- 🎮 **Full Control**: Start, Pause, Resume, Stop
-- 💾 **Remembers Settings**: Your preferences are saved
-- 🔄 **Auto-Submit**: Optionally press Enter after each input
-- 📊 **Visual Feedback**: See current value and progress
-- 🛡️ **Safe**: Only works on input fields you select
-
-## 🔧 Troubleshooting
-
-**Extension won't load?**
-- Make sure all files are in the same folder
-- Check that `manifest.json` is valid JSON
-- Ensure you have the icon files
-
-**Can't select target?**
-- Make sure you clicked "Select Input Field" first
-- Only text input fields can be selected
-- Try refreshing the page and trying again
-
-**Not working on a specific site?**
-- Some sites block extensions - this is normal
-- Try on a different website to test
-
-## 🎮 Keyboard Shortcuts
-
-The extension supports these shortcuts when the popup is open:
-- **Ctrl+Space** (Cmd+Space on Mac): Start/Pause
-- **Escape**: Stop
-
-## 🔄 Updates
-
-To update the extension:
-1. Modify the files in your extension folder
-2. Go to `about:debugging` 
-3. Click "Reload" next to your extension
-
-## 💡 Pro Tips
-
-- **For eBay**: The search box usually works perfectly
-- **Test First**: Always click "Select Input Field" and test before starting
-- **Be Respectful**: Don't use this to spam or overload websites
-- **Check Terms**: Make sure automated input is allowed on the sites you use
-
-This extension is much more reliable than the HTML tool because it:
-- ✅ Works across all browser tabs
-- ✅ Maintains connection even when switching tabs
-- ✅ Has proper permissions to interact with web pages
-- ✅ Saves your settings between sessions
-- ✅ Provides better error handling
-
-Enjoy your new auto-increment tool! 🎉
+- When you reload the extension during development, all open tabs are automatically refreshed to ensure a clean single instance of the content script
+- Focus mode re-applies automatically when eBay dynamically reloads the listings table after a search
+- The extension works on any website with standard text input fields, not just eBay
